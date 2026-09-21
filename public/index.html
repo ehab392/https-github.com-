@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>حجة بتول | لأجود أنواع الخُمرة والبخور والعطور</title>
+  <meta name="description" content="متجر حجة بتول لأجود أنواع الخُمرة والبخور والعطور">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="hdr-top">
+      <!-- يمين: الشعار -->
+      <a class="logo" href="/" aria-label="حجة بتول - الصفحة الرئيسية">
+        <img src="/images/logo.png" alt="شعار حجة بتول" id="logoImg">
+      </a>
+
+      <!-- وسط: اسم المتجر + الشعار -->
+      <div class="brand">
+        <h1>حجة بتول</h1>
+        <p>لأجود أنواع الخُمرة والبخور والعطور</p>
+      </div>
+
+      <!-- يسار: الأزرار -->
+      <div class="hdr-left">
+        <div class="links" id="links">
+          <button class="hbtn primary" id="btnBuy" type="button">شراء</button>
+          <button class="hbtn" id="btnContact" type="button">تواصل معنا</button>
+          <span id="authArea"></span>
+        </div>
+        <button class="hbtn cart-btn" id="btnCart" type="button" aria-label="السلة">
+          السلة <span class="count" id="cartCount">0</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="search-row">
+      <input type="search" id="search" placeholder="ابحث عن منتج بالاسم أو النوع (بخور / عطر)" aria-label="بحث">
+    </div>
+
+    <nav class="cats" aria-label="التصنيفات">
+      <div class="cats-inner" id="cats">
+        <button type="button" data-cat="all" class="active">كل المنتجات</button>
+        <button type="button" data-cat="incense">البخور</button>
+        <button type="button" data-cat="perfume">العطور</button>
+        <button type="button" data-cat="bestsellers">الأكثر مبيعًا</button>
+        <button type="button" data-cat="offers">العروض</button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main"></main>
+  <div id="layer"></div>
+  <div id="toastBox"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

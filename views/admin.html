@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>لوحة التحكم | حجة بتول</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <header class="admin-bar">
+    <div class="admin-bar-in">
+      <h1>لوحة التحكم</h1>
+      <div class="admin-actions">
+        <a class="hbtn" href="/">العودة للصفحة الرئيسية</a>
+        <button class="hbtn" id="logout" type="button">تسجيل الخروج</button>
+      </div>
+    </div>
+    <nav class="tabbar" id="tabs">
+      <button type="button" data-tab="products" class="active">المنتجات</button>
+      <button type="button" data-tab="form" id="tabForm">إضافة منتج</button>
+      <button type="button" data-tab="orders">الطلبات</button>
+    </nav>
+  </header>
+
+  <main class="admin-main">
+    <!-- المنتجات -->
+    <section id="tab-products">
+      <div class="chips" id="filters">
+        <button type="button" data-f="all" class="active">كل المنتجات</button>
+        <button type="button" data-f="incense">بخور</button>
+        <button type="button" data-f="perfume">عطور</button>
+        <button type="button" data-f="offers">العروض</button>
+      </div>
+      <div id="productList"></div>
+    </section>
+
+    <!-- نموذج الإضافة / التعديل -->
+    <section id="tab-form" hidden>
+      <form id="productForm" class="panel" novalidate></form>
+    </section>
+
+    <!-- الطلبات -->
+    <section id="tab-orders" hidden>
+      <div id="orderList"></div>
+    </section>
+  </main>
+
+  <div id="toastBox"></div>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

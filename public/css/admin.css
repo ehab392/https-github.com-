@@ -1,0 +1,52 @@
+.admin-bar { background: var(--oud); color: #f7efe0; box-shadow: 0 2px 0 var(--brass); position: sticky; top: 0; z-index: 20; }
+.admin-bar-in { max-width: 1000px; margin: 0 auto; padding: .7rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }
+.admin-bar h1 { margin: 0; font-family: var(--font-display); color: var(--brass-light); font-size: 1.7rem; }
+.admin-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+.tabbar { background: var(--oud-dark); display: flex; max-width: 100%; overflow-x: auto; justify-content: center; }
+.tabbar button { background: none; border: 0; border-bottom: 3px solid transparent; color: #e9dcc3; padding: .65rem 1.3rem; font-weight: 500; white-space: nowrap; }
+.tabbar button.active { color: var(--brass-light); border-bottom-color: var(--brass); font-weight: 700; }
+
+.admin-main { max-width: 1000px; margin: 0 auto; padding: 1.2rem 1rem 4rem; }
+.chips { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.chips button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: .35rem 1rem; }
+.chips button.active { background: var(--oud); color: #fff; border-color: var(--oud); }
+
+.panel { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem; display: grid; gap: 1rem; }
+.panel h2 { margin: 0; font-family: var(--font-display); color: var(--oud); font-size: 1.7rem; }
+
+.prow { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: .8rem; margin-bottom: .7rem; display: grid; grid-template-columns: 72px 1fr; gap: .8rem; }
+.thumb { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; background: #ebe6df; }
+.prow h3 { margin: 0; font-family: var(--font-display); font-size: 1.3rem; line-height: 1.3; }
+.prow .meta { color: var(--muted); font-size: .92rem; }
+.prow .btns { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; }
+.old { text-decoration: line-through; color: var(--muted); margin-inline-start: .4rem; }
+
+.type-pick { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.type-pick button { border: 2px solid var(--line); background: #fff; border-radius: 10px; padding: .8rem; font-weight: 700; font-size: 1.05rem; }
+.type-pick button.on { border-color: var(--brass); background: #faf4e6; color: var(--oud); }
+.type-pick button:disabled { opacity: .6; cursor: not-allowed; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+.hint { color: var(--muted); font-size: .88rem; margin: 0; }
+
+.variant { border: 1px dashed var(--brass); border-radius: 10px; padding: .9rem; display: grid; gap: .8rem; background: #fdfbf6; }
+.variant-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--oud); }
+
+.imgbox { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; }
+.imgbox img, .imgbox .empty-img { width: 84px; height: 84px; border-radius: 8px; object-fit: cover; background: #ebe6df; border: 1px solid var(--line); }
+.empty-img { display: grid; place-items: center; color: var(--muted); font-size: .8rem; text-align: center; }
+.filebtn { position: relative; overflow: hidden; }
+.filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.extras { display: flex; gap: .6rem; flex-wrap: wrap; }
+.extra { position: relative; }
+.extra img { width: 84px; height: 84px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line); }
+.extra button { position: absolute; top: -6px; left: -6px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--danger); color: #fff; line-height: 1; }
+.form-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+
+.order { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; margin-bottom: .8rem; display: grid; gap: .5rem; }
+.order-head { display: flex; justify-content: space-between; gap: .6rem; flex-wrap: wrap; align-items: center; }
+.order-head strong { font-family: var(--font-display); font-size: 1.25rem; color: var(--oud); }
+.order ul { margin: 0; padding-inline-start: 1.2rem; }
+.order select { border: 1px solid var(--line); border-radius: 8px; padding: .3rem .6rem; background: #fff; }
+.order .total { font-weight: 800; }
+
+@media (max-width: 560px) { .two { grid-template-columns: 1fr; } }
