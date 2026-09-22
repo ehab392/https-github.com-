@@ -109,6 +109,16 @@ router.patch('/products/:id/bestseller', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.patch('/products/:id/stock', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const value = req.body.value === true;
+    const { rowCount } = await pool.query('UPDATE products SET out_of_stock=$1 WHERE id=$2', [value, id]);
+    if (!rowCount) return res.status(404).json({ error: 'المنتج غير موجود' });
+    res.json({ ok: true, out_of_stock: value });
+  } catch (e) { next(e); }
+});
+
 router.delete('/products/:id', async (req, res, next) => {
   try {
     await pool.query('DELETE FROM products WHERE id=$1', [parseInt(req.params.id, 10)]);
