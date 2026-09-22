@@ -47,6 +47,8 @@ app.get('/api/config', (_req, res) => {
   res.json({
     currency: process.env.CURRENCY || 'ر.س',
     whatsapp: (process.env.WHATSAPP_NUMBER || '').replace(/\D/g, ''),
+    address: process.env.STORE_ADDRESS || '',
+    mapUrl: process.env.STORE_MAP_URL || '',
   });
 });
 app.use('/api/auth', require('./src/routes/auth'));
