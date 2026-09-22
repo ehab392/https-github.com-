@@ -299,9 +299,9 @@
     const n = state.config.whatsapp;
     openLayer(`
       <div class="modal" role="dialog" aria-label="تواصل معنا">
-        <div class="modal-head"><h2>تواصل معنا</h2><button class="icon-btn" data-close aria-label="إغلاق">×</button></div>
-        <div class="modal-body">
-          ${n ? `
+        <a class="btn btn-brass btn-block" target="_blank" rel="noopener" href="https://wa.me/${esc(n)}">مراسلتنا على واتساب</a>
+            <a class="btn btn-ghost btn-block" target="_blank" rel="noopener" href="https://www.facebook.com/share/19HKw3wJNt/">صفحتنا على فيسبوك</a>
+            <a class="btn btn-ghost btn-block" href="tel:+${esc(n)}">اتصال هاتفي</a>`
             <p style="margin:0">يسعدنا خدمتك والإجابة عن استفساراتك.</p>
             <a class="btn btn-brass btn-block" target="_blank" rel="noopener" href="https://wa.me/${esc(n)}">مراسلتنا على واتساب</a>
             <a class="btn btn-ghost btn-block" href="tel:+${esc(n)}">اتصال هاتفي</a>`
