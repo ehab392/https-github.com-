@@ -29,10 +29,14 @@ CREATE TABLE IF NOT EXISTS products (
   images         JSONB         NOT NULL DEFAULT '[]'::jsonb,
   variants       JSONB         NOT NULL DEFAULT '[]'::jsonb,
   is_best_seller BOOLEAN       NOT NULL DEFAULT FALSE,
+  out_of_stock   BOOLEAN       NOT NULL DEFAULT FALSE,
   created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_products_type ON products (type);
 CREATE INDEX IF NOT EXISTS idx_products_best ON products (is_best_seller);
+
+-- يضيف هذا العمود تلقائيًا إن كانت قاعدة البيانات منشأة من قبل (قبل إضافة ميزة "نفدت الكمية")
+ALTER TABLE products ADD COLUMN IF NOT EXISTS out_of_stock BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- 3) الطلبات
 --   items : [{"name":"...","quantity":2,"price":40}]
