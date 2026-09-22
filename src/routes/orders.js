@@ -1,5 +1,6 @@
 const express = require('express');
 const pool = require('../db');
+const { notifyNewOrder } = require('../notify');
 
 const router = express.Router();
 const PHONE_RE = /^[0-9+\s-]{7,20}$/;
@@ -53,7 +54,10 @@ router.post('/', async (req, res, next) => {
        VALUES ($1, $2, $3, $4::jsonb, $5) RETURNING id`,
       [req.user ? req.user.id : null, customer, phone, JSON.stringify(items), total]
     );
-    res.status(201).json({ order_id: ins.rows[0].id, total });
+    const orderId = ins.rows[0].id;
+    // إرسال إشعار بريدي للأدمن (لا يوقف الرد على العميل إن فشل أو لم يكن مُفعّلًا)
+    notifyNewOrder({ id: orderId, customer_name: customer, phone, items, total }).catch(() => {});
+    res.status(201).json({ order_id: orderId, total });
   } catch (e) { next(e); }
 });
 
