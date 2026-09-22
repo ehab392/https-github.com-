@@ -20,7 +20,7 @@ router.post('/', async (req, res, next) => {
     const ids = [...new Set(rawItems.map((i) => parseInt(i.product_id, 10)).filter(Number.isInteger))];
     if (!ids.length) return res.status(400).json({ error: 'منتجات غير صالحة' });
     const { rows } = await pool.query(
-      'SELECT id, type, name, price::float AS price, variants FROM products WHERE id = ANY($1::int[])',
+      'SELECT id, type, name, price::float AS price, variants, out_of_stock FROM products WHERE id = ANY($1::int[])',
       [ids]
     );
     const byId = new Map(rows.map((p) => [p.id, p]));
@@ -31,6 +31,7 @@ router.post('/', async (req, res, next) => {
       const p = byId.get(parseInt(raw.product_id, 10));
       const quantity = parseInt(raw.quantity, 10);
       if (!p) return res.status(400).json({ error: 'أحد المنتجات لم يعد متوفرًا' });
+      if (p.out_of_stock) return res.status(400).json({ error: `"${p.name}" نفدت كميته حاليًا` });
       if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
         return res.status(400).json({ error: 'كمية غير صالحة' });
       }
