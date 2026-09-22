@@ -43,6 +43,17 @@
 .form-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
 
 .order { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; margin-bottom: .8rem; display: grid; gap: .5rem; }
+.order-section { margin-bottom: 1.6rem; }
+.order-section-title {
+  font-family: var(--font-display); font-size: 1.25rem; color: var(--oud); margin: 0 0 .8rem;
+  display: flex; align-items: center; gap: .5rem; padding-bottom: .4rem; border-bottom: 2px solid var(--brass);
+}
+.order-section-title.done { color: var(--muted); border-bottom-color: var(--line); }
+.order-section-title .count {
+  font-family: var(--font-body); font-size: .8rem; background: var(--oud); color: #fff;
+  border-radius: 999px; padding: .1rem .6rem; font-weight: 700;
+}
+.order-section-title.done .count { background: var(--muted); }
 .order-head { display: flex; justify-content: space-between; gap: .6rem; flex-wrap: wrap; align-items: center; }
 .order-head strong { font-family: var(--font-display); font-size: 1.25rem; color: var(--oud); }
 .order ul { margin: 0; padding-inline-start: 1.2rem; }
