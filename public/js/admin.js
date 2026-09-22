@@ -303,6 +303,255 @@
   });
 
   // ---------- الطلبات ----------
+  function orderCard(o) {
+    return `
+      <div class="order" data-id="${o.id}">
+        <div class="order-head">
+          <strong>طلب رقم ${o.id}</strong>
+          <span class="meta">${new Date(o.created_at).toLocaleString('ar-EG')}</span>
+        </div>
+        <div>👤 ${esc(o.customer_name)} &nbsp;|&nbsp; 📞 <a href="tel:${esc(o.phone)}" dir="ltr">${esc(o.phone)}</a></div>
+        <ul>${o.items.map((i) => `<li>${esc(i.name)} × ${i.quantity} — ${fmt(i.price * i.quantity)}</li>`).join('')}</ul>
+        <div class="order-head">
+          <span class="total">المجموع: ${fmt(o.total)}</span>
+          <select data-status aria-label="حالة الطلب">
+            ${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${o.status === k ? 'selected' : ''}>${v}</option>`).join('')}
+          </select>
+        </div>
+      </div>`;
+  }
+
+  async function loadOrders() {
+    const box = $('#orderList');
+    try {
+      S.orders = (await api('/api/admin/orders')).orders;
+      if (!S.orders.length) { box.innerHTML = '<p class="empty">لا توجد طلبات بعد.</p>'; return; }
+
+      const active = S.orders.filter((o) => o.status === 'new' || o.status === 'confirmed' || o.status === 'shipped');
+      const finished = S.orders.filter((o) => o.status === 'done' || o.status === 'cancelled');
+
+      box.innerHTML = `
+        <div class="order-section">
+          <h3 class="order-section-title">🆕 الطلبات الجديدة والنشطة <span class="count">${active.length}</span></h3>
+          ${active.length ? active.map(orderCard).join('') : '<p class="empty">لا توجد طلبات نشطة حاليًا.</p>'}
+        </div>
+        <div class="order-section">
+          <h3 class="order-section-title done">✅ الطلبات المكتملة والملغاة <span class="count">${finished.length}</span></h3>
+          ${finished.length ? finished.map(orderCard).join('') : '<p class="empty">لا توجد طلبات مكتملة بعد.</p>'}
+        </div>`;
+    } catch (e) { box.innerHTML = `<p class="empty">${esc(e.message)}</p>`; }
+  }
+
+  $('#orderList').addEventListener('change', async (e) => {
+    const sel = e.target.closest('select[data-status]');
+    if (!sel) return;
+    try {
+      await api(`/api/admin/orders/${sel.closest('.order').dataset.id}/status`, { method: 'PATCH', body: { status: sel.value } });
+      toast('تم تحديث حالة الطلب');
+    } catch (ex) { toast(ex.message, true); }
+  });
+
+  // ---------- البدء ----------
+  (async () => {
+    try { S.currency = (await api('/api/config')).currency; } catch (_) {}
+    loadProducts();
+  })();
+})();
+    const p = S.products.find((x) => x.id === id);
+    try {
+      if (btn.dataset.act === 'edit') { editForm(p); showTab('form'); }
+      if (btn.dataset.act === 'best') {
+        await api(`/api/admin/products/${id}/bestseller`, { method: 'PATCH', body: { value: !p.is_best_seller } });
+        toast(p.is_best_seller ? 'تمت الإزالة من الأكثر مبيعًا' : 'تمت الإضافة إلى الأكثر مبيعًا');
+        loadProducts();
+      }
+      if (btn.dataset.act === 'stock') {
+        await api(`/api/admin/products/${id}/stock`, { method: 'PATCH', body: { value: !p.out_of_stock } });
+        toast(p.out_of_stock ? 'أصبح المنتج متوفرًا من جديد' : 'تم وضع علامة "نفدت الكمية" على المنتج');
+        loadProducts();
+      }
+      if (btn.dataset.act === 'del' && confirm(`هل تريد حذف "${p.name}" نهائيًا؟`)) {
+        await api(`/api/admin/products/${id}`, { method: 'DELETE' });
+        toast('تم حذف المنتج');
+        loadProducts();
+      }
+    } catch (ex) { toast(ex.message, true); }
+  });
+
+  // ---------- نموذج المنتج ----------
+  const emptyVariant = () => ({ size: '', price: '', discount: '', image: '' });
+
+  function newForm(type, keep = false) {
+    if (keep && S.form) return;
+    S.form = { id: null, type, name: '', price: '', discount: '', images: [], variants: [emptyVariant()] };
+    renderForm();
+  }
+  function editForm(p) {
+    const f = { id: p.id, type: p.type, name: p.name, price: '', discount: '', images: [], variants: [emptyVariant()] };
+    if (p.type === 'perfume') {
+      f.price = p.old_price > p.price ? p.old_price : p.price;
+      f.discount = p.old_price > p.price ? p.price : '';
+      f.images = [...p.images];
+    } else {
+      f.variants = p.variants.map((v) => ({
+        size: v.size,
+        price: v.old_price > v.price ? v.old_price : v.price,
+        discount: v.old_price > v.price ? v.price : '',
+        image: v.image || '',
+      }));
+    }
+    S.form = f;
+    renderForm();
+  }
+
+  function imgPreview(url) {
+    return url ? `<img src="${esc(url)}" alt="">` : '<div class="empty-img">بدون صورة</div>';
+  }
+
+  function renderForm() {
+    const f = S.form;
+    $('#tabForm').textContent = f.id ? 'تعديل منتج' : 'إضافة منتج';
+    const perfume = `
+      <div class="two">
+        <div class="field"><label for="f-price">السعر (${esc(S.currency)})</label>
+          <input id="f-price" data-f="price" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(f.price)}"></div>
+        <div class="field"><label for="f-disc">سعر جديد بعد الخصم (اختياري)</label>
+          <input id="f-disc" data-f="discount" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(f.discount)}"></div>
+      </div>
+      <p class="hint">عند إدخال سعر الخصم يظهر السعر القديم مشطوبًا والجديد بجانبه، ويظهر المنتج في قسم العروض تلقائيًا. اترك الخانة فارغة لإلغاء الخصم.</p>
+      <div class="field"><label>الصورة الرئيسية</label>
+        <div class="imgbox">${imgPreview(f.images[0])}
+          <span class="btn btn-ghost filebtn">${f.images[0] ? 'تغيير الصورة' : 'اختيار صورة'}<input type="file" accept="image/*" data-up="main"></span>
+        </div></div>
+      <div class="field"><label>صور إضافية</label>
+        <div class="extras">
+          ${f.images.slice(1).map((u, i) => `<div class="extra"><img src="${esc(u)}" alt=""><button type="button" data-act="rmimg" data-i="${i + 1}" aria-label="حذف الصورة">×</button></div>`).join('')}
+        </div>
+        <div><span class="btn btn-ghost filebtn">+ إضافة صورة أخرى<input type="file" accept="image/*" data-up="extra"></span></div>
+      </div>`;
+
+    const incense = `
+      ${f.variants.map((v, i) => `
+        <div class="variant">
+          <div class="variant-head"><span>الحجم ${i + 1}</span>
+            ${f.variants.length > 1 ? `<button class="btn btn-sm btn-danger" type="button" data-act="rmvar" data-i="${i}">حذف</button>` : ''}</div>
+          <div class="field"><label>الحجم (مثال: 50 جم)</label>
+            <input data-vf="size" data-i="${i}" value="${esc(v.size)}"></div>
+          <div class="two">
+            <div class="field"><label>السعر (${esc(S.currency)})</label>
+              <input data-vf="price" data-i="${i}" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(v.price)}"></div>
+            <div class="field"><label>سعر بعد الخصم (اختياري)</label>
+              <input data-vf="discount" data-i="${i}" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(v.discount)}"></div>
+          </div>
+          <div class="field"><label>صورة هذا الحجم</label>
+            <div class="imgbox">${imgPreview(v.image)}
+              <span class="btn btn-ghost filebtn">${v.image ? 'تغيير الصورة' : 'اختيار صورة'}<input type="file" accept="image/*" data-up="variant" data-i="${i}"></span>
+            </div></div>
+        </div>`).join('')}
+      <button class="btn btn-ghost" type="button" data-act="addvar">+ إضافة حجم آخر</button>
+      <p class="hint">الخصم يُطبَّق على الحجم الذي تدخل له سعرًا جديدًا فقط.</p>`;
+
+    $('#productForm').innerHTML = `
+      <h2>${f.id ? 'تعديل المنتج' : 'إضافة منتج جديد'}</h2>
+      <div class="field"><label>نوع المنتج</label>
+        <div class="type-pick">
+          <button type="button" data-type="incense" class="${f.type === 'incense' ? 'on' : ''}" ${f.id ? 'disabled' : ''}>🪔 بخور</button>
+          <button type="button" data-type="perfume" class="${f.type === 'perfume' ? 'on' : ''}" ${f.id ? 'disabled' : ''}>🌸 عطر</button>
+        </div></div>
+      <div class="field"><label for="f-name">${f.type === 'incense' ? 'اسم البخور' : 'اسم العطر'}</label>
+        <input id="f-name" data-f="name" value="${esc(f.name)}"></div>
+      ${f.type === 'perfume' ? perfume : incense}
+      <p class="form-error" id="formErr" role="alert"></p>
+      <div class="form-actions">
+        <button class="btn btn-brass" type="submit" id="saveBtn">${f.id ? 'حفظ التعديلات' : 'إضافة المنتج'}</button>
+        <button class="btn btn-ghost" type="button" data-act="cancel">إلغاء</button>
+      </div>`;
+  }
+
+  const form = $('#productForm');
+
+  // مزامنة الحقول مع الحالة أثناء الكتابة (بدون إعادة رسم)
+  form.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset.f) S.form[t.dataset.f] = t.value;
+    if (t.dataset.vf) S.form.variants[Number(t.dataset.i)][t.dataset.vf] = t.value;
+  });
+
+  form.addEventListener('click', (e) => {
+    const typeBtn = e.target.closest('button[data-type]');
+    if (typeBtn && !S.form.id) { S.form.type = typeBtn.dataset.type; renderForm(); return; }
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const i = Number(b.dataset.i);
+    if (b.dataset.act === 'addvar') { S.form.variants.push(emptyVariant()); renderForm(); }
+    if (b.dataset.act === 'rmvar') { S.form.variants.splice(i, 1); renderForm(); }
+    if (b.dataset.act === 'rmimg') { S.form.images.splice(i, 1); renderForm(); }
+    if (b.dataset.act === 'cancel') { S.form = null; showTab('products'); }
+  });
+
+  // رفع الصور فور اختيارها
+  form.addEventListener('change', async (e) => {
+    const input = e.target;
+    if (!input.dataset.up || !input.files.length) return;
+    const fd = new FormData();
+    fd.append('image', input.files[0]);
+    toast('جارٍ رفع الصورة…');
+    try {
+      const { url } = await api('/api/admin/upload', { method: 'POST', body: fd });
+      const f = S.form;
+      if (input.dataset.up === 'main') f.images[0] = url;
+      if (input.dataset.up === 'extra') { if (!f.images.length) f.images[0] = url; else f.images.push(url); }
+      if (input.dataset.up === 'variant') f.variants[Number(input.dataset.i)].image = url;
+      renderForm();
+      toast('تم رفع الصورة');
+    } catch (ex) { toast(ex.message, true); }
+  });
+
+  function buildPayload() {
+    const f = S.form;
+    const name = f.name.trim();
+    if (!name) throw new Error('اكتب اسم المنتج');
+    const price = (orig, disc, label) => {
+      const o = Number(orig);
+      if (!(o > 0)) throw new Error(`أدخل سعرًا صحيحًا ${label}`);
+      if (disc === '' || disc === null) return { price: o, old_price: null };
+      const d = Number(disc);
+      if (!(d > 0 && d < o)) throw new Error(`سعر الخصم ${label} يجب أن يكون أقل من السعر الأصلي`);
+      return { price: d, old_price: o };
+    };
+    if (f.type === 'perfume') {
+      return { type: 'perfume', name, ...price(f.price, f.discount, ''), images: f.images };
+    }
+    return {
+      type: 'incense', name,
+      variants: f.variants.map((v, i) => {
+        if (!v.size.trim()) throw new Error(`اكتب اسم الحجم رقم ${i + 1}`);
+        return { size: v.size.trim(), image: v.image, ...price(v.price, v.discount, `للحجم "${v.size}"`) };
+      }),
+    };
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('#formErr');
+    err.textContent = '';
+    const btn = $('#saveBtn');
+    try {
+      const body = buildPayload();
+      btn.disabled = true;
+      const id = S.form.id;
+      await api(id ? `/api/admin/products/${id}` : '/api/admin/products', { method: id ? 'PUT' : 'POST', body });
+      toast(id ? 'تم حفظ التعديلات' : 'تمت إضافة المنتج');
+      S.form = null;
+      showTab('products');
+    } catch (ex) {
+      err.textContent = ex.message;
+      btn.disabled = false;
+      err.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+
+  // ---------- الطلبات ----------
   async function loadOrders() {
     const box = $('#orderList');
     try {
