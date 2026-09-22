@@ -84,11 +84,12 @@
         <div>
           <h3>${esc(p.name)}</h3>
           <div class="meta">${p.type === 'incense' ? 'بخور' : 'عطر'}
-            ${p.is_best_seller ? ' · ⭐ من الأكثر مبيعًا' : ''}${hasDiscount(p) ? ' · 🏷️ عليه خصم' : ''}</div>
+            ${p.is_best_seller ? ' · ⭐ من الأكثر مبيعًا' : ''}${hasDiscount(p) ? ' · 🏷️ عليه خصم' : ''}${p.out_of_stock ? ' · ⛔ نفدت الكمية' : ''}</div>
           <div class="meta">${priceText(p)}</div>
           <div class="btns">
             <button class="btn btn-sm" data-act="edit" type="button">تعديل</button>
             <button class="btn btn-sm btn-brass" data-act="best" type="button">${p.is_best_seller ? 'إزالة من الأكثر مبيعًا' : 'إضافة إلى الأكثر مبيعًا'}</button>
+            <button class="btn btn-sm ${p.out_of_stock ? '' : 'btn-danger'}" data-act="stock" type="button">${p.out_of_stock ? 'إعادة توفير المنتج' : 'وضع علامة نفدت الكمية'}</button>
             <button class="btn btn-sm btn-danger" data-act="del" type="button">حذف</button>
           </div>
         </div>
@@ -113,6 +114,11 @@
       if (btn.dataset.act === 'best') {
         await api(`/api/admin/products/${id}/bestseller`, { method: 'PATCH', body: { value: !p.is_best_seller } });
         toast(p.is_best_seller ? 'تمت الإزالة من الأكثر مبيعًا' : 'تمت الإضافة إلى الأكثر مبيعًا');
+        loadProducts();
+      }
+      if (btn.dataset.act === 'stock') {
+        await api(`/api/admin/products/${id}/stock`, { method: 'PATCH', body: { value: !p.out_of_stock } });
+        toast(p.out_of_stock ? 'أصبح المنتج متوفرًا من جديد' : 'تم وضع علامة "نفدت الكمية" على المنتج');
         loadProducts();
       }
       if (btn.dataset.act === 'del' && confirm(`هل تريد حذف "${p.name}" نهائيًا؟`)) {
