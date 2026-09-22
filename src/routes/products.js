@@ -5,7 +5,7 @@ const router = express.Router();
 
 // الأعمدة المُرجَعة (الأرقام تُحوَّل من NUMERIC إلى float)
 const COLUMNS = `id, type, name, price::float AS price, old_price::float AS old_price,
-                 images, variants, is_best_seller, created_at`;
+                 images, variants, is_best_seller, out_of_stock, created_at`;
 
 // شرط "العروض": خصم على العطر أو على أحد أحجام البخور
 const OFFER_SQL = `(
