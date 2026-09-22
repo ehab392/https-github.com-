@@ -17,7 +17,7 @@
     return data;
   }
 
-  const state = { config: { currency: 'ر.س', whatsapp: '' }, user: null, category: 'all', q: '', products: [], cart: [] };
+  const state = { config: { currency: 'ر.س', whatsapp: '', address: '', mapUrl: '' }, user: null, category: 'all', q: '', products: [], cart: [] };
   const fmt = (n) => `${Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${state.config.currency}`;
 
   function toast(msg, isError = false) {
@@ -76,6 +76,7 @@
         <div class="badges">
           ${p.is_best_seller ? '<span class="badge best">الأكثر مبيعًا</span>' : ''}
           ${hasDiscount(p) ? '<span class="badge sale">خصم</span>' : ''}
+          ${p.out_of_stock ? '<span class="badge soldout">نفدت الكمية</span>' : ''}
         </div>
         <div class="slide"></div>
         ${imgs.length > 1 ? `
@@ -91,7 +92,7 @@
             ${p.variants.map((v, i) => `<option value="${i}">${esc(v.size)}</option>`).join('')}
           </select>` : ''}
         <div class="price"></div>
-        <button class="btn btn-block add" type="button">إضافة للسلة</button>
+        <button class="btn btn-block add" type="button" ${p.out_of_stock ? 'disabled' : ''}>${p.out_of_stock ? 'نفدت الكمية' : 'إضافة للسلة'}</button>
       </div>`;
 
     const slide = $('.slide', el);
@@ -297,6 +298,8 @@
 
   function openContact() {
     const n = state.config.whatsapp;
+    const addr = state.config.address;
+    const mapUrl = state.config.mapUrl;
     openLayer(`
       <div class="modal" role="dialog" aria-label="تواصل معنا">
         <div class="modal-head"><h2>تواصل معنا</h2><button class="icon-btn" data-close aria-label="إغلاق">×</button></div>
@@ -307,6 +310,12 @@
             <a class="btn btn-ghost btn-block" target="_blank" rel="noopener" href="https://www.facebook.com/share/19HKw3wJNt/">صفحتنا على فيسبوك</a>
             <a class="btn btn-ghost btn-block" href="tel:+${esc(n)}">اتصال هاتفي</a>`
           : '<p style="margin:0">أضف رقم واتساب المتجر في إعدادات الموقع (WHATSAPP_NUMBER) ليظهر هنا.</p>'}
+          ${addr ? `
+            <div style="border-top:1px solid var(--line);margin-top:.4rem;padding-top:.8rem">
+              <p style="margin:0 0 .5rem;font-weight:700">📍 موقع المتجر</p>
+              <p style="margin:0">${esc(addr)}</p>
+              ${mapUrl ? `<a class="btn btn-ghost btn-block" style="margin-top:.6rem" target="_blank" rel="noopener" href="${esc(mapUrl)}">عرض الموقع على الخريطة</a>` : ''}
+            </div>` : ''}
         </div>
       </div>`);
   }
