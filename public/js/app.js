@@ -65,6 +65,10 @@
   const hasDiscount = (p) =>
     p.type === 'perfume' ? p.old_price > p.price : p.variants.some((v) => v.old_price > v.price);
 
+  function isOutOfStock(p, vIdx) {
+    return p.type === 'incense' ? !!(p.variants[vIdx] && p.variants[vIdx].out_of_stock) : !!p.out_of_stock;
+  }
+
   function createCard(p) {
     const imgs = cardImages(p);
     let imgIdx = 0;
@@ -76,7 +80,7 @@
         <div class="badges">
           ${p.is_best_seller ? '<span class="badge best">الأكثر مبيعًا</span>' : ''}
           ${hasDiscount(p) ? '<span class="badge sale">خصم</span>' : ''}
-          ${p.out_of_stock ? '<span class="badge soldout">نفدت الكمية</span>' : ''}
+          ${p.type === 'perfume' && p.out_of_stock ? '<span class="badge soldout">نفدت الكمية</span>' : ''}
         </div>
         <div class="slide"></div>
         ${imgs.length > 1 ? `
@@ -88,32 +92,75 @@
         <span class="card-type">${p.type === 'incense' ? 'بخور' : 'عطر'}</span>
         <h3 class="card-name">${esc(p.name)}</h3>
         ${p.type === 'incense' ? `
-          <select aria-label="الحجم">
-            ${p.variants.map((v, i) => `<option value="${i}">${esc(v.size)}</option>`).join('')}
-          </select>` : ''}
+          <div class="size-chips" role="group" aria-label="الحجم">
+            ${p.variants.map((v, i) => `
+              <button type="button" class="chip${i === 0 ? ' on' : ''}${v.out_of_stock ? ' disabled' : ''}" data-i="${i}" ${v.out_of_stock ? 'disabled' : ''}>
+                ${esc(v.size)}${v.out_of_stock ? '<span class="chip-sub">نفدت</span>' : `<span class="chip-sub">${fmt(v.price)}</span>`}
+              </button>`).join('')}
+          </div>` : ''}
         <div class="price"></div>
-        <button class="btn btn-block add" type="button" ${p.out_of_stock ? 'disabled' : ''}>${p.out_of_stock ? 'نفدت الكمية' : 'إضافة للسلة'}</button>
+        <button class="btn btn-block add" type="button">إضافة للسلة</button>
+        <a class="btn btn-ghost btn-block wa-order" target="_blank" rel="noopener">🟢 اطلب عبر واتساب</a>
       </div>`;
 
     const slide = $('.slide', el);
     const dots = el.querySelectorAll('.dots span');
     const priceBox = $('.price', el);
+    const addBtn = $('.add', el);
+    const waBtn = $('.wa-order', el);
+    const chips = el.querySelectorAll('.chip');
 
-    function showImage(i) {
+    function showImage(i, fromVariant) {
       if (!imgs.length) { slide.innerHTML = '<div class="noimg">حجة بتول</div>'; return; }
       imgIdx = (i + imgs.length) % imgs.length;
       slide.innerHTML = `<img src="${esc(imgs[imgIdx])}" alt="${esc(p.name)}" loading="lazy">`;
       dots.forEach((d, k) => d.classList.toggle('on', k === imgIdx));
+      // مزامنة الحجم مع الصورة المعروضة (السحب أو الأسهم) تلقائيًا
+      if (!fromVariant && p.type === 'incense') {
+        const matchIdx = p.variants.findIndex((v) => v.image === imgs[imgIdx]);
+        if (matchIdx >= 0 && matchIdx !== vIdx) selectVariant(matchIdx, true);
+      }
     }
     slide.addEventListener('click', () => { if (imgs.length) openZoom(imgs[imgIdx], p.name); });
+
     function showPrice() {
       const src = p.type === 'incense' ? p.variants[vIdx] : p;
       priceBox.innerHTML = src.old_price > src.price
         ? `<span class="now">${fmt(src.price)}</span><span class="old">${fmt(src.old_price)}</span>`
         : `<span class="now">${fmt(src.price)}</span>`;
     }
-    showImage(0);
+
+    function updateAvailability() {
+      const out = isOutOfStock(p, vIdx);
+      addBtn.disabled = out;
+      addBtn.textContent = out ? 'نفدت الكمية' : 'إضافة للسلة';
+      addBtn.classList.toggle('btn-disabled', out);
+    }
+
+    function updateWaLink() {
+      const n = state.config.whatsapp;
+      if (!n) { waBtn.style.display = 'none'; return; }
+      const sizeTxt = p.type === 'incense' ? ` - الحجم: ${p.variants[vIdx].size}` : '';
+      const text = `السلام عليكم، أريد طلب "${p.name}"${sizeTxt}`;
+      waBtn.href = `https://wa.me/${n}?text=${encodeURIComponent(text)}`;
+    }
+
+    function selectVariant(i, skipImageSync) {
+      vIdx = i;
+      chips.forEach((c) => c.classList.toggle('on', Number(c.dataset.i) === vIdx));
+      showPrice();
+      updateAvailability();
+      updateWaLink();
+      if (!skipImageSync) {
+        const vi = imgs.indexOf(p.variants[vIdx].image);
+        if (vi >= 0) showImage(vi, true);
+      }
+    }
+
+    showImage(0, true);
     showPrice();
+    updateAvailability();
+    updateWaLink();
 
     const prev = $('.prev', el), next = $('.next', el);
     if (prev) {
@@ -131,17 +178,12 @@
       });
     }
 
-    const sel = $('select', el);
-    if (sel) {
-      sel.addEventListener('change', () => {
-        vIdx = Number(sel.value);
-        showPrice();
-        const vi = imgs.indexOf(p.variants[vIdx].image);
-        if (vi >= 0) showImage(vi);
-      });
-    }
+    chips.forEach((c) => {
+      c.addEventListener('click', () => { if (!c.disabled) selectVariant(Number(c.dataset.i)); });
+    });
 
-    $('.add', el).addEventListener('click', () => {
+    addBtn.addEventListener('click', () => {
+      if (isOutOfStock(p, vIdx)) return;
       const image = p.type === 'incense' ? p.variants[vIdx].image || imgs[0] : imgs[0];
       addToCart(p, vIdx, image);
     });
@@ -251,25 +293,80 @@
     if (go) go.addEventListener('click', openCheckout);
   }
 
-  function openCheckout() {
+  async function openCheckout() {
     if (!state.cart.length) { toast('السلة فارغة، أضف منتجًا أولًا', true); return; }
     const u = state.user;
+    let zones = [];
+    try { zones = (await api('/api/delivery')).zones; } catch (_) {}
+    const co = { code: '', discount: 0 }; // الكوبون المُطبَّق حاليًا
+
+    const renderSummary = () => {
+      const city = $('#cCity') ? $('#cCity').value : '';
+      const zone = zones.find((z) => z.city === city);
+      const deliveryPrice = zone ? zone.price : 0;
+      const sub = cartTotal();
+      const total = Math.max(0, sub + deliveryPrice - co.discount);
+      const box = $('#cSummary');
+      if (box) {
+        box.innerHTML = `
+          ${state.cart.map((i) => `<div><span>${esc(i.name)}${i.size ? ' - ' + esc(i.size) : ''} × ${i.qty}</span><span>${fmt(i.price * i.qty)}</span></div>`).join('')}
+          <div><span>المجموع الفرعي</span><span>${fmt(sub)}</span></div>
+          ${deliveryPrice ? `<div><span>التوصيل (${esc(city)})</span><span>${fmt(deliveryPrice)}</span></div>` : ''}
+          ${co.discount ? `<div><span>خصم (${esc(co.code)})</span><span>-${fmt(co.discount)}</span></div>` : ''}
+          <div style="font-weight:800;margin-top:.4rem"><span>الإجمالي</span><span>${fmt(total)}</span></div>`;
+      }
+      return { city, deliveryPrice, total };
+    };
+
     openLayer(`
       <div class="modal" role="dialog" aria-label="إتمام الشراء">
         <div class="modal-head"><h2>إتمام الشراء</h2><button class="icon-btn" data-close aria-label="إغلاق">×</button></div>
         <form class="modal-body" id="checkoutForm" novalidate>
-          <div class="summary">
-            ${state.cart.map((i) => `<div><span>${esc(i.name)}${i.size ? ' - ' + esc(i.size) : ''} × ${i.qty}</span><span>${fmt(i.price * i.qty)}</span></div>`).join('')}
-            <div style="font-weight:800;margin-top:.4rem"><span>المجموع</span><span>${fmt(cartTotal())}</span></div>
-          </div>
+          <div class="summary" id="cSummary"></div>
           <div class="field"><label for="cName">اسم العميل</label>
             <input id="cName" autocomplete="name" required value="${esc(u ? u.username : '')}"></div>
           <div class="field"><label for="cPhone">رقم الهاتف</label>
             <input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" required value="${esc(u ? u.phone : '')}"></div>
+          ${zones.length ? `
+          <div class="field"><label for="cCity">المدينة / المنطقة (للتوصيل)</label>
+            <select id="cCity">
+              <option value="">بدون توصيل (استلام شخصي)</option>
+              ${zones.map((z) => `<option value="${esc(z.city)}">${esc(z.city)} — ${fmt(z.price)}</option>`).join('')}
+            </select></div>` : ''}
+          <div class="field"><label for="cCoupon">كود الخصم (اختياري)</label>
+            <div style="display:flex;gap:.5rem">
+              <input id="cCoupon" style="flex:1" autocapitalize="characters">
+              <button class="btn btn-ghost" type="button" id="cApplyCoupon">تطبيق</button>
+            </div>
+            <p class="form-error" id="cCouponMsg" role="alert" style="margin:0"></p>
+          </div>
           <p class="form-error" id="cErr" role="alert"></p>
           <button class="btn btn-brass btn-block" type="submit" id="cSubmit">تأكيد الطلب</button>
         </form>
       </div>`);
+
+    renderSummary();
+    const citySel = $('#cCity');
+    if (citySel) citySel.addEventListener('change', renderSummary);
+
+    $('#cApplyCoupon').addEventListener('click', async () => {
+      const code = $('#cCoupon').value.trim();
+      const msg = $('#cCouponMsg');
+      msg.textContent = '';
+      if (!code) return;
+      try {
+        const data = await api('/api/coupons/validate', { method: 'POST', body: { code, subtotal: cartTotal() } });
+        co.code = data.code; co.discount = data.discount;
+        msg.style.color = 'var(--ok)';
+        msg.textContent = `تم تطبيق الخصم: -${fmt(data.discount)}`;
+        renderSummary();
+      } catch (ex) {
+        co.code = ''; co.discount = 0;
+        msg.style.color = '';
+        msg.textContent = ex.message;
+        renderSummary();
+      }
+    });
 
     $('#checkoutForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -280,6 +377,7 @@
       const phone = $('#cPhone').value.trim();
       if (name.length < 2) { err.textContent = 'أدخل اسم العميل'; return; }
       if (!/^[0-9+\s-]{7,20}$/.test(phone)) { err.textContent = 'أدخل رقم هاتف صحيح'; return; }
+      const { city } = renderSummary();
       btn.disabled = true; btn.textContent = 'جارٍ إرسال الطلب…';
       try {
         const data = await api('/api/orders', {
@@ -287,6 +385,8 @@
           body: {
             customer_name: name, phone,
             items: state.cart.map((i) => ({ product_id: i.product_id, variant_index: i.variant_index, quantity: i.qty })),
+            delivery_city: city || undefined,
+            coupon_code: co.code || undefined,
           },
         });
         state.cart = []; saveCart();
@@ -329,6 +429,35 @@
       </div>`);
   }
 
+  const ORDER_STATUS_LABELS = { new: 'جديد', confirmed: 'مؤكد', shipped: 'تم الشحن', done: 'مكتمل', cancelled: 'ملغي' };
+
+  async function openMyOrders() {
+    openLayer(`
+      <aside class="drawer" role="dialog" aria-label="طلباتي">
+        <div class="drawer-head"><h2>طلباتي</h2><button class="icon-btn" data-close aria-label="إغلاق">×</button></div>
+        <div class="drawer-body" id="myOrdersBody"><div class="empty">جارٍ التحميل…</div></div>
+      </aside>`);
+    const box = $('#myOrdersBody');
+    try {
+      const { orders } = await api('/api/orders/mine');
+      if (!orders.length) { box.innerHTML = '<div class="empty">لا توجد طلبات سابقة بعد.</div>'; return; }
+      box.innerHTML = orders.map((o) => `
+        <div class="my-order">
+          <div class="my-order-head">
+            <strong>طلب رقم ${o.id}</strong>
+            <span class="status-pill status-${esc(o.status)}">${esc(ORDER_STATUS_LABELS[o.status] || o.status)}</span>
+          </div>
+          <div class="meta">${new Date(o.created_at).toLocaleString('ar-EG')}</div>
+          <ul>${o.items.map((i) => `<li>${esc(i.name)} × ${i.quantity} — ${fmt(i.price * i.quantity)}</li>`).join('')}</ul>
+          ${o.delivery_city ? `<div class="meta">التوصيل إلى ${esc(o.delivery_city)}: ${fmt(o.delivery_price)}</div>` : ''}
+          ${o.discount ? `<div class="meta">خصم (${esc(o.coupon_code || '')}): -${fmt(o.discount)}</div>` : ''}
+          <div class="my-order-total">الإجمالي: ${fmt(o.total)}</div>
+        </div>`).join('');
+    } catch (ex) {
+      box.innerHTML = `<div class="empty">${esc(ex.message)}</div>`;
+    }
+  }
+
   // ---------- الهيدر ----------
   function renderAuth() {
     const box = $('#authArea');
@@ -339,8 +468,10 @@
     }
     box.innerHTML = `
       <span class="user-name">${esc(u.username)}</span>
+      <button class="hbtn" id="btnMyOrders" type="button">طلباتي</button>
       ${u.role === 'admin' ? '<a class="hbtn" href="/admin">لوحة التحكم</a>' : ''}
       <button class="hbtn" id="btnLogout" type="button">تسجيل الخروج</button>`;
+    $('#btnMyOrders').addEventListener('click', openMyOrders);
     $('#btnLogout').addEventListener('click', async () => {
       await api('/api/auth/logout', { method: 'POST' }).catch(() => {});
       state.user = null; renderAuth(); toast('تم تسجيل الخروج');
