@@ -22,6 +22,8 @@ async function notifyNewOrder(order) {
         <tr style="background:#f1efec"><th style="padding:4px 8px">المنتج</th><th style="padding:4px 8px">الكمية</th><th style="padding:4px 8px">السعر</th></tr>
         ${rows}
       </table>
+      ${order.delivery_city ? `<p>🚚 التوصيل إلى: ${esc(order.delivery_city)}</p>` : ''}
+      ${order.discount > 0 ? `<p>🎟️ خصم مُطبَّق: -${order.discount}</p>` : ''}
       <p style="font-size:18px;font-weight:bold;margin-top:10px">المجموع: ${order.total}</p>
       <p style="color:#7a6d6f;font-size:13px">افتح لوحة التحكم في موقعك لمتابعة الطلب.</p>
     </div>`;
