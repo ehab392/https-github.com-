@@ -1,18 +1,35 @@
 const express = require('express');
 const pool = require('../db');
 const { notifyNewOrder } = require('../notify');
+const { computeDiscount } = require('./coupons');
 
 const router = express.Router();
 const PHONE_RE = /^[0-9+\s-]{7,20}$/;
 
+// GET /api/orders/mine - طلبات المستخدم المسجّل دخوله فقط
+router.get('/mine', async (req, res, next) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'يجب تسجيل الدخول أولًا' });
+    const { rows } = await pool.query(
+      `SELECT id, items, subtotal::float AS subtotal, delivery_city, delivery_price::float AS delivery_price,
+              coupon_code, discount::float AS discount, total::float AS total, status, created_at
+       FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 100`,
+      [req.user.id]
+    );
+    res.json({ orders: rows });
+  } catch (e) { next(e); }
+});
+
 // POST /api/orders
-// الجسم: { customer_name, phone, items: [{ product_id, variant_index, quantity }] }
-// الأسعار تُحسب من قاعدة البيانات (لا نثق بالأسعار القادمة من المتصفح)
+// الجسم: { customer_name, phone, items: [{ product_id, variant_index, quantity }], delivery_city?, coupon_code? }
+// كل الأسعار تُحسب من قاعدة البيانات (لا نثق بأي رقم قادم من المتصفح)
 router.post('/', async (req, res, next) => {
   try {
     const customer = String(req.body.customer_name || '').trim();
     const phone = String(req.body.phone || '').trim();
     const rawItems = Array.isArray(req.body.items) ? req.body.items : [];
+    const deliveryCity = String(req.body.delivery_city || '').trim().slice(0, 80);
+    const couponCode = String(req.body.coupon_code || '').trim().toUpperCase().slice(0, 40);
 
     if (customer.length < 2 || customer.length > 100) return res.status(400).json({ error: 'اسم العميل مطلوب' });
     if (!PHONE_RE.test(phone)) return res.status(400).json({ error: 'رقم الهاتف غير صالح' });
@@ -27,12 +44,11 @@ router.post('/', async (req, res, next) => {
     const byId = new Map(rows.map((p) => [p.id, p]));
 
     const items = [];
-    let total = 0;
+    let subtotal = 0;
     for (const raw of rawItems) {
       const p = byId.get(parseInt(raw.product_id, 10));
       const quantity = parseInt(raw.quantity, 10);
       if (!p) return res.status(400).json({ error: 'أحد المنتجات لم يعد متوفرًا' });
-      if (p.out_of_stock) return res.status(400).json({ error: `"${p.name}" نفدت كميته حاليًا` });
       if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
         return res.status(400).json({ error: 'كمية غير صالحة' });
       }
@@ -41,23 +57,63 @@ router.post('/', async (req, res, next) => {
       if (p.type === 'incense') {
         const v = p.variants[parseInt(raw.variant_index, 10)];
         if (!v) return res.status(400).json({ error: 'حجم غير صالح' });
+        if (v.out_of_stock) return res.status(400).json({ error: `"${p.name} - ${v.size}" نفدت كميته حاليًا` });
         name = `${p.name} - ${v.size}`;
         price = Number(v.price);
+      } else if (p.out_of_stock) {
+        return res.status(400).json({ error: `"${p.name}" نفدت كميته حاليًا` });
       }
       items.push({ name, quantity, price });
-      total += price * quantity;
+      subtotal += price * quantity;
     }
-    total = Math.round(total * 100) / 100;
+    subtotal = Math.round(subtotal * 100) / 100;
+
+    // سعر التوصيل (اختياري): يُحسب من جدول المناطق، لا من المتصفح
+    let deliveryPrice = 0;
+    if (deliveryCity) {
+      const z = await pool.query(
+        'SELECT price::float AS price FROM delivery_zones WHERE city = $1 LIMIT 1',
+        [deliveryCity]
+      );
+      if (z.rows[0]) deliveryPrice = z.rows[0].price;
+    }
+
+    // كود الخصم (اختياري): يُعاد التحقق منه هنا من جديد ولا نثق بما أرسله المتصفح
+    let discount = 0;
+    let appliedCoupon = null;
+    if (couponCode) {
+      const c = await pool.query(
+        'SELECT * FROM coupons WHERE UPPER(code) = $1 AND active = TRUE',
+        [couponCode]
+      );
+      const coupon = c.rows[0];
+      if (coupon && !(coupon.expires_at && new Date(coupon.expires_at) < new Date()) && subtotal >= Number(coupon.min_order)) {
+        discount = computeDiscount(coupon, subtotal);
+        appliedCoupon = coupon.code;
+      }
+    }
+
+    const total = Math.max(0, Math.round((subtotal + deliveryPrice - discount) * 100) / 100);
 
     const ins = await pool.query(
-      `INSERT INTO orders (user_id, customer_name, phone, items, total)
-       VALUES ($1, $2, $3, $4::jsonb, $5) RETURNING id`,
-      [req.user ? req.user.id : null, customer, phone, JSON.stringify(items), total]
+      `INSERT INTO orders (user_id, customer_name, phone, items, subtotal, delivery_city, delivery_price, coupon_code, discount, total)
+       VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [
+        req.user ? req.user.id : null,
+        customer,
+        phone,
+        JSON.stringify(items),
+        subtotal,
+        deliveryCity || null,
+        deliveryPrice,
+        appliedCoupon,
+        discount,
+        total,
+      ]
     );
     const orderId = ins.rows[0].id;
-    // إرسال إشعار بريدي للأدمن (لا يوقف الرد على العميل إن فشل أو لم يكن مُفعّلًا)
-    notifyNewOrder({ id: orderId, customer_name: customer, phone, items, total }).catch(() => {});
-    res.status(201).json({ order_id: orderId, total });
+    notifyNewOrder({ id: orderId, customer_name: customer, phone, items, total, delivery_city: deliveryCity, discount }).catch(() => {});
+    res.status(201).json({ order_id: orderId, subtotal, delivery_price: deliveryPrice, discount, total });
   } catch (e) { next(e); }
 });
 
