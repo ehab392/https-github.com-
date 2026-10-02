@@ -25,6 +25,8 @@
       <button type="button" data-tab="products" class="active">المنتجات</button>
       <button type="button" data-tab="form" id="tabForm">إضافة منتج</button>
       <button type="button" data-tab="orders">الطلبات</button>
+      <button type="button" data-tab="delivery">التوصيل</button>
+      <button type="button" data-tab="coupons">الكوبونات</button>
     </nav>
   </header>
 
@@ -48,6 +50,40 @@
     <!-- الطلبات -->
     <section id="tab-orders" hidden>
       <div id="orderList"></div>
+    </section>
+
+    <!-- التوصيل -->
+    <section id="tab-delivery" hidden>
+      <form id="deliveryForm" class="panel" style="margin-bottom:1.2rem">
+        <h2>إضافة منطقة توصيل</h2>
+        <div class="two">
+          <div class="field"><label for="dCity">المدينة / المنطقة</label><input id="dCity" required></div>
+          <div class="field"><label for="dPrice">سعر التوصيل</label><input id="dPrice" type="number" min="0" step="0.01" required></div>
+        </div>
+        <p class="form-error" id="dErr"></p>
+        <button class="btn btn-brass" type="submit">إضافة</button>
+      </form>
+      <div id="deliveryList"></div>
+    </section>
+
+    <!-- الكوبونات -->
+    <section id="tab-coupons" hidden>
+      <form id="couponForm" class="panel" style="margin-bottom:1.2rem">
+        <h2>إنشاء كود خصم</h2>
+        <div class="field"><label for="cpCode">الكود</label><input id="cpCode" style="text-transform:uppercase" required></div>
+        <div class="two">
+          <div class="field"><label for="cpType">نوع الخصم</label>
+            <select id="cpType"><option value="percent">نسبة %</option><option value="fixed">مبلغ ثابت</option></select></div>
+          <div class="field"><label for="cpValue">القيمة</label><input id="cpValue" type="number" min="0" step="0.01" required></div>
+        </div>
+        <div class="two">
+          <div class="field"><label for="cpMin">الحد الأدنى للطلب (اختياري)</label><input id="cpMin" type="number" min="0" step="0.01" value="0"></div>
+          <div class="field"><label for="cpExpires">تاريخ الانتهاء (اختياري)</label><input id="cpExpires" type="date"></div>
+        </div>
+        <p class="form-error" id="cpErr"></p>
+        <button class="btn btn-brass" type="submit">إنشاء الكود</button>
+      </form>
+      <div id="couponList"></div>
     </section>
   </main>
 
