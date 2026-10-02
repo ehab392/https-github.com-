@@ -54,6 +54,8 @@ app.get('/api/config', (_req, res) => {
 app.use('/api/auth', require('./src/routes/auth'));
 app.use('/api/products', require('./src/routes/products'));
 app.use('/api/orders', require('./src/routes/orders'));
+app.use('/api/delivery', require('./src/routes/delivery'));
+app.use('/api/coupons', require('./src/routes/coupons'));
 app.use('/api/admin', require('./src/routes/admin'));
 
 // ---------- صفحة الأدمن (محمية على السيرفر) ----------
