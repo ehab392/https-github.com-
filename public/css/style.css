@@ -136,6 +136,18 @@ main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
 .card-type { font-size: .85rem; color: var(--muted); }
 .card-name { font-family: var(--font-display); font-size: 1.3rem; line-height: 1.3; margin: 0; }
 .card select { border: 1px solid var(--line); border-radius: 8px; padding: .4rem .6rem; background: #fff; width: 100%; }
+.size-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.chip {
+  border: 1.5px solid var(--line); background: #fff; border-radius: 8px; padding: .3rem .6rem;
+  font-size: .85rem; display: flex; flex-direction: column; align-items: center; line-height: 1.3; min-width: 56px;
+}
+.chip .chip-sub { font-size: .72rem; color: var(--muted); }
+.chip.on { border-color: var(--oud); background: #faf4e6; font-weight: 700; }
+.chip.on .chip-sub { color: var(--oud); }
+.chip.disabled, .chip:disabled { opacity: .5; text-decoration: line-through; background: var(--smoke); }
+.wa-order { background: #e8f8ee; border-color: #bfe8cf; color: #1d6b3a; font-size: .9rem; }
+.wa-order:hover { background: #d9f2e2; }
+.btn.btn-disabled, .add:disabled { background: var(--line); color: var(--muted); }
 .price { margin-top: auto; display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
 .price .now { font-weight: 800; font-size: 1.2rem; color: var(--oud); }
 .price .old { color: var(--muted); text-decoration: line-through; font-size: .95rem; }
@@ -162,6 +174,15 @@ main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
 .qty button { width: 34px; height: 34px; border: 0; background: none; font-size: 1.2rem; color: var(--oud); }
 .qty span { min-width: 30px; text-align: center; font-weight: 700; }
 .cart-line-total { font-weight: 700; margin-inline-start: .8rem; }
+
+.my-order { border: 1px solid var(--line); border-radius: 10px; padding: .8rem; margin-bottom: .8rem; }
+.my-order-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .3rem; }
+.my-order ul { margin: .4rem 0; padding-inline-start: 1.1rem; font-size: .9rem; }
+.my-order-total { font-weight: 800; margin-top: .3rem; }
+.status-pill { font-size: .78rem; font-weight: 700; padding: .15rem .6rem; border-radius: 999px; background: var(--smoke); }
+.status-pill.status-new, .status-pill.status-confirmed, .status-pill.status-shipped { background: #faf4e6; color: var(--oud); }
+.status-pill.status-done { background: #e3f2e9; color: var(--ok); }
+.status-pill.status-cancelled { background: #fbe7e8; color: var(--danger); }
 
 /* ===== النوافذ ===== */
 .modal {
