@@ -43,7 +43,7 @@ function normalizeProduct(body) {
     if (!size || size.length > 60) throw new Error('اسم الحجم مطلوب لكل متغير');
     if (!(price > 0)) throw new Error(`سعر الحجم "${size}" غير صالح`);
     if (Number.isNaN(oldPrice) || (oldPrice !== null && oldPrice <= price)) oldPrice = null;
-    return { size, price, old_price: oldPrice, image: cleanUrl(v.image) };
+    return { size, price, old_price: oldPrice, image: cleanUrl(v.image), out_of_stock: v.out_of_stock === true };
   });
   if (!variants.length) throw new Error('أضف حجمًا واحدًا على الأقل');
   return { type, name, price: null, old_price: null, images: [], variants };
@@ -130,7 +130,9 @@ router.delete('/products/:id', async (req, res, next) => {
 router.get('/orders', async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, customer_name, phone, items, total::float AS total, status, created_at
+      `SELECT id, customer_name, phone, items, subtotal::float AS subtotal, delivery_city,
+              delivery_price::float AS delivery_price, coupon_code, discount::float AS discount,
+              total::float AS total, status, created_at
        FROM orders ORDER BY created_at DESC LIMIT 200`
     );
     res.json({ orders: rows });
@@ -142,6 +144,88 @@ router.patch('/orders/:id/status', async (req, res, next) => {
     const status = String(req.body.status || '');
     if (!ORDER_STATUSES.includes(status)) return res.status(400).json({ error: 'حالة غير صالحة' });
     await pool.query('UPDATE orders SET status=$1 WHERE id=$2', [status, parseInt(req.params.id, 10)]);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// ---------- مناطق التوصيل ----------
+router.get('/delivery', async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query('SELECT id, city, price::float AS price FROM delivery_zones ORDER BY city ASC');
+    res.json({ zones: rows });
+  } catch (e) { next(e); }
+});
+
+router.post('/delivery', async (req, res, next) => {
+  try {
+    const city = String(req.body.city || '').trim();
+    const price = num(req.body.price);
+    if (!city || city.length > 80) return res.status(400).json({ error: 'اسم المدينة/المنطقة مطلوب' });
+    if (!(price >= 0)) return res.status(400).json({ error: 'سعر التوصيل غير صالح' });
+    const { rows } = await pool.query(
+      'INSERT INTO delivery_zones (city, price) VALUES ($1, $2) RETURNING id',
+      [city, price]
+    );
+    res.status(201).json({ id: rows[0].id });
+  } catch (e) { next(e); }
+});
+
+router.delete('/delivery/:id', async (req, res, next) => {
+  try {
+    await pool.query('DELETE FROM delivery_zones WHERE id=$1', [parseInt(req.params.id, 10)]);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// ---------- الكوبونات ----------
+router.get('/coupons', async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, code, discount_type, discount_value::float AS discount_value,
+              min_order::float AS min_order, expires_at, active
+       FROM coupons ORDER BY created_at DESC`
+    );
+    res.json({ coupons: rows });
+  } catch (e) { next(e); }
+});
+
+router.post('/coupons', async (req, res, next) => {
+  try {
+    const code = String(req.body.code || '').trim().toUpperCase();
+    const discountType = req.body.discount_type === 'fixed' ? 'fixed' : 'percent';
+    const discountValue = num(req.body.discount_value);
+    const minOrder = num(req.body.min_order) || 0;
+    const expiresAt = req.body.expires_at ? new Date(req.body.expires_at) : null;
+
+    if (!code || code.length > 40) return res.status(400).json({ error: 'كود الخصم مطلوب' });
+    if (!(discountValue > 0)) return res.status(400).json({ error: 'قيمة الخصم غير صالحة' });
+    if (discountType === 'percent' && discountValue > 100) return res.status(400).json({ error: 'نسبة الخصم يجب ألا تتجاوز 100%' });
+
+    const { rows } = await pool.query(
+      `INSERT INTO coupons (code, discount_type, discount_value, min_order, expires_at)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [code, discountType, discountValue, minOrder, expiresAt]
+    );
+    res.status(201).json({ id: rows[0].id });
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ error: 'هذا الكود مستخدَم من قبل' });
+    next(e);
+  }
+});
+
+router.patch('/coupons/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const value = req.body.active === true;
+    const { rowCount } = await pool.query('UPDATE coupons SET active=$1 WHERE id=$2', [value, id]);
+    if (!rowCount) return res.status(404).json({ error: 'الكود غير موجود' });
+    res.json({ ok: true, active: value });
+  } catch (e) { next(e); }
+});
+
+router.delete('/coupons/:id', async (req, res, next) => {
+  try {
+    await pool.query('DELETE FROM coupons WHERE id=$1', [parseInt(req.params.id, 10)]);
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
