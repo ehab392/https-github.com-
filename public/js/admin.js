@@ -81,10 +81,12 @@
   // ---------- التبويبات ----------
   function showTab(name) {
     document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
-    ['products', 'form', 'orders'].forEach((t) => { $('#tab-' + t).hidden = t !== name; });
+    ['products', 'form', 'orders', 'delivery', 'coupons'].forEach((t) => { $('#tab-' + t).hidden = t !== name; });
     if (name === 'orders') loadOrders();
     if (name === 'products') loadProducts();
     if (name === 'form' && !S.form) newForm('perfume');
+    if (name === 'delivery') loadDelivery();
+    if (name === 'coupons') loadCoupons();
     if (!S.form) $('#tabForm').textContent = 'إضافة منتج';
   }
   $('#tabs').addEventListener('click', (e) => {
@@ -129,12 +131,14 @@
         <div>
           <h3>${esc(p.name)}</h3>
           <div class="meta">${p.type === 'incense' ? 'بخور' : 'عطر'}
-            ${p.is_best_seller ? ' · ⭐ من الأكثر مبيعًا' : ''}${hasDiscount(p) ? ' · 🏷️ عليه خصم' : ''}${p.out_of_stock ? ' · ⛔ نفدت الكمية' : ''}</div>
+            ${p.is_best_seller ? ' · ⭐ من الأكثر مبيعًا' : ''}${hasDiscount(p) ? ' · 🏷️ عليه خصم' : ''}
+            ${p.type === 'perfume' && p.out_of_stock ? ' · ⛔ نفدت الكمية' : ''}
+            ${p.type === 'incense' && p.variants.some((v) => v.out_of_stock) ? ' · ⛔ بعض الأحجام نفدت' : ''}</div>
           <div class="meta">${priceText(p)}</div>
           <div class="btns">
             <button class="btn btn-sm" data-act="edit" type="button">تعديل</button>
             <button class="btn btn-sm btn-brass" data-act="best" type="button">${p.is_best_seller ? 'إزالة من الأكثر مبيعًا' : 'إضافة إلى الأكثر مبيعًا'}</button>
-            <button class="btn btn-sm ${p.out_of_stock ? '' : 'btn-danger'}" data-act="stock" type="button">${p.out_of_stock ? 'إعادة توفير المنتج' : 'وضع علامة نفدت الكمية'}</button>
+            ${p.type === 'perfume' ? `<button class="btn btn-sm ${p.out_of_stock ? '' : 'btn-danger'}" data-act="stock" type="button">${p.out_of_stock ? 'إعادة توفير المنتج' : 'وضع علامة نفدت الكمية'}</button>` : '<span class="meta" style="align-self:center">تحكّم الكمية من زر "تعديل" لكل حجم</span>'}
             <button class="btn btn-sm btn-danger" data-act="del" type="button">حذف</button>
           </div>
         </div>
@@ -175,7 +179,7 @@
   });
 
   // ---------- نموذج المنتج ----------
-  const emptyVariant = () => ({ size: '', price: '', discount: '', image: '' });
+  const emptyVariant = () => ({ size: '', price: '', discount: '', image: '', out_of_stock: false });
 
   function newForm(type, keep = false) {
     if (keep && S.form) return;
@@ -194,6 +198,7 @@
         price: v.old_price > v.price ? v.old_price : v.price,
         discount: v.old_price > v.price ? v.price : '',
         image: v.image || '',
+        out_of_stock: v.out_of_stock === true,
       }));
     }
     S.form = f;
@@ -230,7 +235,11 @@
       ${f.variants.map((v, i) => `
         <div class="variant">
           <div class="variant-head"><span>الحجم ${i + 1}</span>
-            ${f.variants.length > 1 ? `<button class="btn btn-sm btn-danger" type="button" data-act="rmvar" data-i="${i}">حذف</button>` : ''}</div>
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <button class="btn btn-sm ${v.out_of_stock ? '' : 'btn-danger'}" type="button" data-act="toggle-var-stock" data-i="${i}">${v.out_of_stock ? 'إعادة توفير' : 'وضع نفدت الكمية'}</button>
+              ${f.variants.length > 1 ? `<button class="btn btn-sm btn-danger" type="button" data-act="rmvar" data-i="${i}">حذف</button>` : ''}
+            </div></div>
+          ${v.out_of_stock ? '<p class="hint" style="color:var(--danger)">⛔ هذا الحجم معلّم حاليًا كـ"نفدت الكمية"، ولن يستطيع العملاء شراءه.</p>' : ''}
           <div class="field"><label>الحجم (مثال: 50 جم)</label>
             <input data-vf="size" data-i="${i}" value="${esc(v.size)}"></div>
           <div class="two">
@@ -281,6 +290,7 @@
     const i = Number(b.dataset.i);
     if (b.dataset.act === 'addvar') { S.form.variants.push(emptyVariant()); renderForm(); }
     if (b.dataset.act === 'rmvar') { S.form.variants.splice(i, 1); renderForm(); }
+    if (b.dataset.act === 'toggle-var-stock') { S.form.variants[i].out_of_stock = !S.form.variants[i].out_of_stock; renderForm(); }
     if (b.dataset.act === 'rmimg') { S.form.images.splice(i, 1); renderForm(); }
     if (b.dataset.act === 'cancel') { S.form = null; showTab('products'); }
   });
@@ -322,7 +332,7 @@
       type: 'incense', name,
       variants: f.variants.map((v, i) => {
         if (!v.size.trim()) throw new Error(`اكتب اسم الحجم رقم ${i + 1}`);
-        return { size: v.size.trim(), image: v.image, ...price(v.price, v.discount, `للحجم "${v.size}"`) };
+        return { size: v.size.trim(), image: v.image, out_of_stock: v.out_of_stock === true, ...price(v.price, v.discount, `للحجم "${v.size}"`) };
       }),
     };
   }
@@ -357,6 +367,8 @@
         </div>
         <div>👤 ${esc(o.customer_name)} &nbsp;|&nbsp; 📞 <a href="tel:${esc(o.phone)}" dir="ltr">${esc(o.phone)}</a></div>
         <ul>${o.items.map((i) => `<li>${esc(i.name)} × ${i.quantity} — ${fmt(i.price * i.quantity)}</li>`).join('')}</ul>
+        ${o.delivery_city ? `<div class="meta">🚚 التوصيل إلى ${esc(o.delivery_city)}: ${fmt(o.delivery_price)}</div>` : ''}
+        ${o.discount > 0 ? `<div class="meta">🎟️ خصم (${esc(o.coupon_code || '')}): -${fmt(o.discount)}</div>` : ''}
         <div class="order-head">
           <span class="total">المجموع: ${fmt(o.total)}</span>
           <select data-status aria-label="حالة الطلب">
@@ -399,6 +411,108 @@
     try {
       await api(`/api/admin/orders/${sel.closest('.order').dataset.id}/status`, { method: 'PATCH', body: { status: sel.value } });
       toast('تم تحديث حالة الطلب');
+    } catch (ex) { toast(ex.message, true); }
+  });
+
+  // ---------- التوصيل ----------
+  async function loadDelivery() {
+    const box = $('#deliveryList');
+    try {
+      const { zones } = await api('/api/admin/delivery');
+      box.innerHTML = zones.length
+        ? zones.map((z) => `
+            <div class="prow" data-id="${z.id}" style="grid-template-columns:1fr auto">
+              <div><h3>${esc(z.city)}</h3><div class="meta">${fmt(z.price)}</div></div>
+              <button class="btn btn-sm btn-danger" data-act="del-zone" type="button">حذف</button>
+            </div>`).join('')
+        : '<p class="empty">لا توجد مناطق توصيل مضافة بعد.</p>';
+    } catch (e) { box.innerHTML = `<p class="empty">${esc(e.message)}</p>`; }
+  }
+
+  $('#deliveryForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('#dErr'); err.textContent = '';
+    const city = $('#dCity').value.trim();
+    const price = $('#dPrice').value;
+    try {
+      await api('/api/admin/delivery', { method: 'POST', body: { city, price } });
+      $('#dCity').value = ''; $('#dPrice').value = '';
+      toast('تمت إضافة منطقة التوصيل');
+      loadDelivery();
+    } catch (ex) { err.textContent = ex.message; }
+  });
+
+  $('#deliveryList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-act="del-zone"]');
+    if (!btn) return;
+    const id = btn.closest('.prow').dataset.id;
+    try {
+      await api(`/api/admin/delivery/${id}`, { method: 'DELETE' });
+      toast('تم الحذف');
+      loadDelivery();
+    } catch (ex) { toast(ex.message, true); }
+  });
+
+  // ---------- الكوبونات ----------
+  function couponRow(c) {
+    const expired = c.expires_at && new Date(c.expires_at) < new Date();
+    return `
+      <div class="prow" data-id="${c.id}" style="grid-template-columns:1fr auto">
+        <div>
+          <h3>${esc(c.code)}</h3>
+          <div class="meta">${c.discount_type === 'percent' ? c.discount_value + '%' : fmt(c.discount_value)}
+            ${c.min_order > 0 ? ' · حد أدنى ' + fmt(c.min_order) : ''}
+            ${c.expires_at ? ' · ينتهي ' + new Date(c.expires_at).toLocaleDateString('ar-EG') : ''}
+            ${expired ? ' · ⛔ منتهي' : (c.active ? ' · ✔ مفعّل' : ' · متوقف')}</div>
+        </div>
+        <div class="btns">
+          <button class="btn btn-sm" data-act="toggle-coupon" type="button">${c.active ? 'إيقاف' : 'تفعيل'}</button>
+          <button class="btn btn-sm btn-danger" data-act="del-coupon" type="button">حذف</button>
+        </div>
+      </div>`;
+  }
+
+  async function loadCoupons() {
+    const box = $('#couponList');
+    try {
+      const { coupons } = await api('/api/admin/coupons');
+      box.innerHTML = coupons.length ? coupons.map(couponRow).join('') : '<p class="empty">لا توجد أكواد خصم بعد.</p>';
+      S.coupons = coupons;
+    } catch (e) { box.innerHTML = `<p class="empty">${esc(e.message)}</p>`; }
+  }
+
+  $('#couponForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('#cpErr'); err.textContent = '';
+    try {
+      await api('/api/admin/coupons', {
+        method: 'POST',
+        body: {
+          code: $('#cpCode').value.trim(),
+          discount_type: $('#cpType').value,
+          discount_value: $('#cpValue').value,
+          min_order: $('#cpMin').value || 0,
+          expires_at: $('#cpExpires').value || undefined,
+        },
+      });
+      $('#couponForm').reset();
+      toast('تم إنشاء كود الخصم');
+      loadCoupons();
+    } catch (ex) { err.textContent = ex.message; }
+  });
+
+  $('#couponList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const id = btn.closest('.prow').dataset.id;
+    const c = (S.coupons || []).find((x) => String(x.id) === id);
+    try {
+      if (btn.dataset.act === 'toggle-coupon') {
+        await api(`/api/admin/coupons/${id}`, { method: 'PATCH', body: { active: !c.active } });
+      } else if (btn.dataset.act === 'del-coupon') {
+        await api(`/api/admin/coupons/${id}`, { method: 'DELETE' });
+      }
+      loadCoupons();
     } catch (ex) { toast(ex.message, true); }
   });
 
